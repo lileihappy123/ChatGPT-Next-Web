@@ -563,8 +563,8 @@ function _Home() {
     (state) => [
       state.newSession,
       state.currentSessionIndex,
-      state.removeSession
-    ],
+      state.removeSession,
+    ]
   );
   const chatStore = useChatStore();
   const loading = !useHasHydrated();
