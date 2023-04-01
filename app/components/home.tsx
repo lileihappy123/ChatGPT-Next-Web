@@ -25,6 +25,8 @@ import dynamic from "next/dynamic";
 import { REPO_URL } from "../constant";
 import { ErrorBoundary } from "./error";
 
+import calcTextareaHeight from "../calcTextareaHeight";
+
 export function Loading(props: { noLogo?: boolean }) {
   return (
     <div className={styles["loading-content"]}>
@@ -97,7 +99,7 @@ export function ChatList() {
       state.currentSessionIndex,
       state.selectSession,
       state.removeSession,
-    ]
+    ],
   );
 
   return (
@@ -168,6 +170,10 @@ export function PromptHints(props: {
 export function Chat(props: {
   showSideBar?: () => void;
   sideBarShowing?: boolean;
+  autoSize: {
+    minRows: number;
+    maxRows: number;
+  };
 }) {
   type RenderMessage = Message & { preview?: boolean };
 
@@ -179,9 +185,10 @@ export function Chat(props: {
   const fontSize = useChatStore((state) => state.config.fontSize);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [textareaRows, setTextareaRows] = useState(2);
+  const [textareaStyle, setTextareaStyle] = useState({});
   const { submitKey, shouldSubmit } = useSubmitHandler();
 
   // prompt hints
@@ -192,7 +199,7 @@ export function Chat(props: {
       setPromptHints(promptStore.search(text));
     },
     100,
-    { leading: true, trailing: true }
+    { leading: true, trailing: true },
   );
 
   const onPromptSelect = (prompt: Prompt) => {
@@ -206,7 +213,7 @@ export function Chat(props: {
     if (!dom) return;
     const paddingBottomNum: number = parseInt(
       window.getComputedStyle(dom).paddingBottom,
-      10
+      10,
     );
     dom.scrollTop = dom.scrollHeight - dom.offsetHeight + paddingBottomNum;
   };
@@ -228,10 +235,13 @@ export function Chat(props: {
       }
     }
 
-    // textarea rows optimize
-    const length = text.split("\n").length - 1;
-    const rowsLength = length < 2 ? 2 : length > 6 ? 6 : length;
-    setTextareaRows(rowsLength > 6 ? 6 : rowsLength);
+    resizeTextarea();
+  };
+
+  // set style for textarea
+  const resizeTextarea = () => {
+    const { minRows, maxRows } = props.autoSize;
+    setTextareaStyle(calcTextareaHeight(inputRef.current, minRows, maxRows));
   };
 
   // submit user input
@@ -242,7 +252,6 @@ export function Chat(props: {
     setUserInput("");
     setPromptHints([]);
     inputRef.current?.focus();
-    setTextareaRows(2);
   };
 
   // stop response
@@ -302,7 +311,7 @@ export function Chat(props: {
               preview: true,
             },
           ]
-        : []
+        : [],
     )
     .concat(
       userInput.length > 0 && config.sendPreviewBubble
@@ -314,7 +323,7 @@ export function Chat(props: {
               preview: false,
             },
           ]
-        : []
+        : [],
     );
 
   // auto scroll
@@ -352,7 +361,7 @@ export function Chat(props: {
               const newTopic = prompt(Locale.Chat.Rename, session.topic);
               if (newTopic && newTopic !== session.topic) {
                 chatStore.updateCurrentSession(
-                  (session) => (session.topic = newTopic!)
+                  (session) => (session.topic = newTopic!),
                 );
               }
             }}
@@ -481,9 +490,9 @@ export function Chat(props: {
         <div className={styles["chat-input-panel-inner"]}>
           <textarea
             ref={inputRef}
+            style={textareaStyle}
             className={styles["chat-input"]}
             placeholder={Locale.Chat.Input(submitKey)}
-            rows={textareaRows}
             onInput={(e) => onInput(e.currentTarget.value)}
             value={userInput}
             onKeyDown={onInputKeyDown}
@@ -555,7 +564,7 @@ function _Home() {
       state.newSession,
       state.currentSessionIndex,
       state.removeSession,
-    ]
+    ],
   );
   const chatStore = useChatStore();
   const loading = !useHasHydrated();
@@ -653,6 +662,7 @@ function _Home() {
             key="chat"
             showSideBar={() => setShowSideBar(true)}
             sideBarShowing={showSideBar}
+            autoSize={{ minRows: 2, maxRows: 6 }}
           />
         )}
       </div>
