@@ -1,18 +1,14 @@
-"use client";
-
+import { useDebouncedCallback } from "use-debounce";
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 
-import { IconButton } from "./button";
-import styles from "./home.module.scss";
-
-import SettingsIcon from "../icons/settings.svg";
-import GithubIcon from "../icons/github.svg";
-import ChatGptIcon from "../icons/chatgpt.svg";
-
-import BotIcon from "../icons/bot.svg";
-import AddIcon from "../icons/add.svg";
+import SendWhiteIcon from "../icons/send-white.svg";
+import BrainIcon from "../icons/brain.svg";
+import ExportIcon from "../icons/export.svg";
+import MenuIcon from "../icons/menu.svg";
+import CopyIcon from "../icons/copy.svg";
+import DownloadIcon from "../icons/download.svg";
 import LoadingIcon from "../icons/three-dots.svg";
-import CloseIcon from "../icons/close.svg";
+import BotIcon from "../icons/bot.svg";
 
 import {
   Message,
@@ -21,33 +17,29 @@ import {
   ChatSession,
   BOT_HELLO,
 } from "../store";
+
 import {
   copyToClipboard,
   downloadAs,
   isMobileScreen,
   selectOrCopy,
 } from "../utils";
-import Locale from "../locales";
-import { ChatList } from "./chat-list";
-import { Chat } from "./chat";
 
 import dynamic from "next/dynamic";
-import { REPO_URL } from "../constant";
 
-export function Loading(props: { noLogo?: boolean }) {
-  return (
-    <div className={styles["loading-content"]}>
-      {!props.noLogo && <BotIcon />}
-      <LoadingIcon />
-    </div>
-  );
-}
+import { ControllerPool } from "../requests";
+import { Prompt, usePromptStore } from "../store/prompt";
+import Locale from "../locales";
 
-const Settings = dynamic(async () => (await import("./settings")).Settings, {
-  loading: () => <Loading noLogo />,
+import { IconButton } from "./button";
+import styles from "./home.module.scss";
+
+import { showModal, showToast } from "./ui-lib";
+
+const Markdown = dynamic(async () => (await import("./markdown")).Markdown, {
+  loading: () => <LoadingIcon />,
 });
 
-<<<<<<< HEAD
 const Emoji = dynamic(async () => (await import("emoji-picker-react")).Emoji, {
   loading: () => <LoadingIcon />,
 });
@@ -66,60 +58,62 @@ export function Avatar(props: { role: Message["role"] }) {
   );
 }
 
-export function ChatItem(props: {
-  onClick?: () => void;
-  onDelete?: () => void;
-  title: string;
-  count: number;
-  time: string;
-  selected: boolean;
-}) {
-  return (
-    <div
-      className={`${styles["chat-item"]} ${
-        props.selected && styles["chat-item-selected"]
-      }`}
-      onClick={props.onClick}
-    >
-      <div className={styles["chat-item-title"]}>{props.title}</div>
-      <div className={styles["chat-item-info"]}>
-        <div className={styles["chat-item-count"]}>
-          {Locale.ChatItem.ChatItemCount(props.count)}
-        </div>
-        <div className={styles["chat-item-date"]}>{props.time}</div>
+function exportMessages(messages: Message[], topic: string) {
+  const mdText =
+    `# ${topic}\n\n` +
+    messages
+      .map((m) => {
+        return m.role === "user" ? `## ${m.content}` : m.content.trim();
+      })
+      .join("\n\n");
+  const filename = `${topic}.md`;
+
+  showModal({
+    title: Locale.Export.Title,
+    children: (
+      <div className="markdown-body">
+        <pre className={styles["export-content"]}>{mdText}</pre>
       </div>
-      <div className={styles["chat-item-delete"]} onClick={props.onDelete}>
-        <DeleteIcon />
-      </div>
-    </div>
-  );
+    ),
+    actions: [
+      <IconButton
+        key="copy"
+        icon={<CopyIcon />}
+        bordered
+        text={Locale.Export.Copy}
+        onClick={() => copyToClipboard(mdText)}
+      />,
+      <IconButton
+        key="download"
+        icon={<DownloadIcon />}
+        bordered
+        text={Locale.Export.Download}
+        onClick={() => downloadAs(mdText, filename)}
+      />,
+    ],
+  });
 }
 
-export function ChatList() {
-  const [sessions, selectedIndex, selectSession, removeSession] = useChatStore(
-    (state) => [
-      state.sessions,
-      state.currentSessionIndex,
-      state.selectSession,
-      state.removeSession,
-    ]
-  );
-
-  return (
-    <div className={styles["chat-list"]}>
-      {sessions.map((item, i) => (
-        <ChatItem
-          title={item.topic}
-          time={item.lastUpdate}
-          count={item.messages.length}
-          key={i}
-          selected={i === selectedIndex}
-          onClick={() => selectSession(i)}
-          onDelete={() => confirm(Locale.Home.DeleteChat) && removeSession(i)}
-        />
-      ))}
-    </div>
-  );
+function showMemoryPrompt(session: ChatSession) {
+  showModal({
+    title: `${Locale.Memory.Title} (${session.lastSummarizeIndex} of ${session.messages.length})`,
+    children: (
+      <div className="markdown-body">
+        <pre className={styles["export-content"]}>
+          {session.memoryPrompt || Locale.Memory.EmptyContent}
+        </pre>
+      </div>
+    ),
+    actions: [
+      <IconButton
+        key="copy"
+        icon={<CopyIcon />}
+        bordered
+        text={Locale.Memory.Copy}
+        onClick={() => copyToClipboard(session.memoryPrompt)}
+      />,
+    ],
+  });
 }
 
 function useSubmitHandler() {
@@ -128,7 +122,7 @@ function useSubmitHandler() {
 
   const shouldSubmit = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Enter") return false;
-    if(e.key==='Enter' && e.nativeEvent.isComposing) return false
+    if (e.key === "Enter" && e.nativeEvent.isComposing) return false;
     return (
       (config.submitKey === SubmitKey.AltEnter && e.altKey) ||
       (config.submitKey === SubmitKey.CtrlEnter && e.ctrlKey) ||
@@ -196,7 +190,7 @@ export function Chat(props: {
       setPromptHints(promptStore.search(text));
     },
     100,
-    { leading: true, trailing: true }
+    { leading: true, trailing: true },
   );
 
   const onPromptSelect = (prompt: Prompt) => {
@@ -210,7 +204,7 @@ export function Chat(props: {
     if (!dom) return;
     const paddingBottomNum: number = parseInt(
       window.getComputedStyle(dom).paddingBottom,
-      10
+      10,
     );
     dom.scrollTop = dom.scrollHeight - dom.offsetHeight + paddingBottomNum;
   };
@@ -350,7 +344,7 @@ export function Chat(props: {
               const newTopic = prompt(Locale.Chat.Rename, session.topic);
               if (newTopic && newTopic !== session.topic) {
                 chatStore.updateCurrentSession(
-                  (session) => (session.topic = newTopic!)
+                  (session) => (session.topic = newTopic!),
                 );
               }
             }}
@@ -499,151 +493,6 @@ export function Chat(props: {
             onClick={onUserSubmit}
           />
         </div>
-      </div>
-    </div>
-  );
-}
-
-=======
->>>>>>> 6c18627... refactor: split homt.tsx components
-function useSwitchTheme() {
-  const config = useChatStore((state) => state.config);
-
-  useEffect(() => {
-    document.body.classList.remove("light");
-    document.body.classList.remove("dark");
-
-    if (config.theme === "dark") {
-      document.body.classList.add("dark");
-    } else if (config.theme === "light") {
-      document.body.classList.add("light");
-    }
-
-    const themeColor = getComputedStyle(document.body)
-      .getPropertyValue("--theme-color")
-      .trim();
-    const metaDescription = document.querySelector('meta[name="theme-color"]');
-    metaDescription?.setAttribute("content", themeColor);
-  }, [config.theme]);
-}
-
-const useHasHydrated = () => {
-  const [hasHydrated, setHasHydrated] = useState<boolean>(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  return hasHydrated;
-};
-
-export function Home() {
-  const [createNewSession, currentIndex, removeSession] = useChatStore(
-    (state) => [
-      state.newSession,
-      state.currentSessionIndex,
-      state.removeSession,
-    ]
-  );
-  const loading = !useHasHydrated();
-  const [showSideBar, setShowSideBar] = useState(true);
-
-  // setting
-  const [openSettings, setOpenSettings] = useState(false);
-  const config = useChatStore((state) => state.config);
-
-  useSwitchTheme();
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  return (
-    <div
-      className={`${
-        config.tightBorder && !isMobileScreen()
-          ? styles["tight-container"]
-          : styles.container
-      }`}
-    >
-      <div
-        className={styles.sidebar + ` ${showSideBar && styles["sidebar-show"]}`}
-      >
-        <div className={styles["sidebar-header"]}>
-          <div className={styles["sidebar-title"]}>ChatGPT Next</div>
-          <div className={styles["sidebar-sub-title"]}>
-            Build your own AI assistant.
-          </div>
-          <div className={styles["sidebar-logo"]}>
-            <ChatGptIcon />
-          </div>
-        </div>
-
-        <div
-          className={styles["sidebar-body"]}
-          onClick={() => {
-            setOpenSettings(false);
-            setShowSideBar(false);
-          }}
-        >
-          <ChatList />
-        </div>
-
-        <div className={styles["sidebar-tail"]}>
-          <div className={styles["sidebar-actions"]}>
-            <div className={styles["sidebar-action"] + " " + styles.mobile}>
-              <IconButton
-                icon={<CloseIcon />}
-                onClick={() => {
-                  if (confirm(Locale.Home.DeleteChat)) {
-                    removeSession(currentIndex);
-                  }
-                }}
-              />
-            </div>
-            <div className={styles["sidebar-action"]}>
-              <IconButton
-                icon={<SettingsIcon />}
-                onClick={() => {
-                  setOpenSettings(true);
-                  setShowSideBar(false);
-                }}
-              />
-            </div>
-            <div className={styles["sidebar-action"]}>
-              <a href={REPO_URL} target="_blank">
-                <IconButton icon={<GithubIcon />} />
-              </a>
-            </div>
-          </div>
-          <div>
-            <IconButton
-              icon={<AddIcon />}
-              text={Locale.Home.NewChat}
-              onClick={() => {
-                createNewSession();
-                setShowSideBar(false);
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className={styles["window-content"]}>
-        {openSettings ? (
-          <Settings
-            closeSettings={() => {
-              setOpenSettings(false);
-              setShowSideBar(true);
-            }}
-          />
-        ) : (
-          <Chat
-            key="chat"
-            showSideBar={() => setShowSideBar(true)}
-            sideBarShowing={showSideBar}
-          />
-        )}
       </div>
     </div>
   );
