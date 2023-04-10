@@ -181,11 +181,12 @@ export async function requestChatStream(
         const resTimeoutId = setTimeout(() => finish(), TIME_OUT_MS);
         const content = await reader?.read();
         clearTimeout(resTimeoutId);
-        let text = decoder.decode(content?.value);
-        text = text
-          .replace("data:", "")
-          .replace("None", "")
-          .replace("\n\n", "");
+        // let text = decoder.decode(content?.value);
+        // text = text
+        //   .replace("data:", "")
+        //   .replace("None", "")
+        //   .replace("\n\n", "");
+        const text = decoder.decode(content?.value, { stream: true });
         responseText += text;
 
         const done = !content || content.done;
