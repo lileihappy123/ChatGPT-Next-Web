@@ -187,9 +187,15 @@ export async function requestChatStream(
         //   .replace("None", "")
         //   .replace("\n\n", "");
         const text = decoder.decode(content?.value, { stream: true });
+      
+        if (!content || !content.value) {
+          break;
+        }
+      
+        // const text = decoder.decode(content.value, { stream: true });
         responseText += text;
 
-        const done = !content || content.done;
+        const done = content.done;
         options?.onMessage(responseText, false);
 
         if (done) {
