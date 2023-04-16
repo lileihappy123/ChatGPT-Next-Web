@@ -2,12 +2,16 @@ import type { ChatRequest, ChatResponse } from "./api/openai/typing";
 import { Message, ModelConfig, useAccessStore, useChatStore } from "./store";
 import { showToast } from "./components/ui-lib";
 
+<<<<<<< HEAD
 const TIME_OUT_MS = 30000;
 const OPENAI_URL = "127.0.0.1:5000";
 const DEFAULT_PROTOCOL = "http";
 const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
 const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
 const URL = `${PROTOCOL}://${BASE_URL}/`;
+=======
+const TIME_OUT_MS = 60000;
+>>>>>>> dc3883e... feat: close #118 add stop all button
 
 const makeRequestParam = (
   messages: Message[],
@@ -177,7 +181,6 @@ export async function requestChatStream(
       options?.onController?.(controller);
 
       while (true) {
-        // handle time out, will stop if no response in 10 secs
         const resTimeoutId = setTimeout(() => finish(), TIME_OUT_MS);
         const content = await reader?.read();
         clearTimeout(resTimeoutId);
@@ -186,13 +189,12 @@ export async function requestChatStream(
         //   .replace("data:", "")
         //   .replace("None", "")
         //   .replace("\n\n", "");
-        const text = decoder.decode(content?.value, { stream: true });
-      
+
         if (!content || !content.value) {
           break;
         }
-      
-        // const text = decoder.decode(content.value, { stream: true });
+
+        const text = decoder.decode(content.value, { stream: true });
         responseText += text;
 
         const done = content.done;
@@ -249,6 +251,14 @@ export const ControllerPool = {
     const key = this.key(sessionIndex, messageId);
     const controller = this.controllers[key];
     controller?.abort();
+  },
+
+  stopAll() {
+    Object.values(this.controllers).forEach((v) => v.abort());
+  },
+
+  hasPending() {
+    return Object.values(this.controllers).length > 0;
   },
 
   remove(sessionIndex: number, messageId: number) {
