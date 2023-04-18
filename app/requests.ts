@@ -7,6 +7,11 @@ if (!Array.prototype.at) {
 }
 
 const TIME_OUT_MS = 30000;
+const OPENAI_URL = "localhost:5000";
+const DEFAULT_PROTOCOL = "http";
+const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
+const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
+const URL = `${PROTOCOL}://${BASE_URL}/`
 
 const makeRequestParam = (
   messages: Message[],
@@ -48,7 +53,8 @@ function getHeaders() {
 
 export function requestOpenaiClient(path: string) {
   return (body: any, method = "POST") =>
-    fetch("/api/openai", {
+    // fetch("/api/openai", {
+    fetch(URL+"/chat", {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -62,7 +68,8 @@ export function requestOpenaiClient(path: string) {
 export async function requestChat(messages: Message[]) {
   const req: ChatRequest = makeRequestParam(messages, { filterBot: true });
 
-  const res = await requestOpenaiClient("v1/chat/completions")(req);
+  // const res = await requestOpenaiClient("v1/chat/completions")(req);
+  const res = await requestOpenaiClient(URL+"/chat")(req);
 
   try {
     const response = (await res.json()) as ChatReponse;
@@ -115,11 +122,13 @@ export async function requestChatStream(
   const reqTimeoutId = setTimeout(() => controller.abort(), TIME_OUT_MS);
 
   try {
-    const res = await fetch("/api/chat-stream", {
+    // const res = await fetch("/api/chat-stream", {
+      
+    const res = await fetch(URL+"/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        path: "v1/chat/completions",
+        path: "/chat",
         ...getHeaders(),
       },
       body: JSON.stringify(req),
@@ -145,7 +154,8 @@ export async function requestChatStream(
         const resTimeoutId = setTimeout(() => finish(), TIME_OUT_MS);
         const content = await reader?.read();
         clearTimeout(resTimeoutId);
-        const text = decoder.decode(content?.value);
+        let text = decoder.decode(content?.value);
+        text = text.replace("data:","").replace("None","").replace("\n\n","");
         responseText += text;
 
         const done = !content || content.done;
