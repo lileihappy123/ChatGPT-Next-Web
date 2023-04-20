@@ -1,24 +1,27 @@
 import type { ChatRequest, ChatResponse } from "./api/openai/typing";
-import { Message, ModelConfig, useAccessStore, useChatStore } from "./store";
+import {
+  Message,
+  ModelConfig,
+  ModelType,
+  useAccessStore,
+  useChatStore,
+} from "./store";
 import { showToast } from "./components/ui-lib";
 
-<<<<<<< HEAD
 const TIME_OUT_MS = 30000;
 const OPENAI_URL = "127.0.0.1:5000";
 const DEFAULT_PROTOCOL = "http";
 const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
 const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
 const URL = `${PROTOCOL}://${BASE_URL}/`;
-=======
-const TIME_OUT_MS = 60000;
->>>>>>> dc3883e... feat: close #118 add stop all button
 
 const makeRequestParam = (
   messages: Message[],
   options?: {
     filterBot?: boolean;
     stream?: boolean;
-  }
+    model?: ModelType;
+  },
 ): ChatRequest => {
   let sendMessages = messages.map((v) => ({
     role: v.role,
@@ -34,6 +37,11 @@ const makeRequestParam = (
   // @yidadaa: wont send max_tokens, because it is nonsense for Muggles
   // @ts-expect-error
   delete modelConfig.max_tokens;
+
+  // override model config
+  if (options?.model) {
+    modelConfig.model = options.model;
+  }
 
   return {
     messages: sendMessages,
@@ -72,8 +80,16 @@ export function requestOpenaiClient(path: string) {
     });
 }
 
-export async function requestChat(messages: Message[]) {
-  const req: ChatRequest = makeRequestParam(messages, { filterBot: true });
+export async function requestChat(
+  messages: Message[],
+  options?: {
+    model?: ModelType;
+  },
+) {
+  const req: ChatRequest = makeRequestParam(messages, {
+    filterBot: true,
+    model: options?.model,
+  });
 
   // const res = await requestOpenaiClient("v1/chat/completions")(req);
   const res = await requestOpenaiClient(URL + "/chat")(req);
@@ -223,7 +239,13 @@ export async function requestChatStream(
   }
 }
 
-export async function requestWithPrompt(messages: Message[], prompt: string) {
+export async function requestWithPrompt(
+  messages: Message[],
+  prompt: string,
+  options?: {
+    model?: ModelType;
+  },
+) {
   messages = messages.concat([
     {
       role: "user",
@@ -232,7 +254,7 @@ export async function requestWithPrompt(messages: Message[], prompt: string) {
     },
   ]);
 
-  const res = await requestChat(messages);
+  const res = await requestChat(messages, options);
 
   return res?.choices?.at(0)?.message?.content ?? "";
 }
