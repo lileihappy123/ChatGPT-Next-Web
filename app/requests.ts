@@ -3,22 +3,22 @@ import { filterConfig, Message, ModelConfig, useAccessStore } from "./store";
 import Locale from "./locales";
 
 if (!Array.prototype.at) {
-  require('array.prototype.at/auto');
+  require("array.prototype.at/auto");
 }
 
 const TIME_OUT_MS = 30000;
-const OPENAI_URL = "localhost:5000";
+const OPENAI_URL = "127.0.0.1:5000";
 const DEFAULT_PROTOCOL = "http";
 const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
 const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
-const URL = `${PROTOCOL}://${BASE_URL}/`
+const URL = `${PROTOCOL}://${BASE_URL}/`;
 
 const makeRequestParam = (
   messages: Message[],
   options?: {
     filterBot?: boolean;
     stream?: boolean;
-  }
+  },
 ): ChatRequest => {
   let sendMessages = messages.map((v) => ({
     role: v.role,
@@ -54,7 +54,7 @@ function getHeaders() {
 export function requestOpenaiClient(path: string) {
   return (body: any, method = "POST") =>
     // fetch("/api/openai", {
-    fetch(URL+"/chat", {
+    fetch(URL + "/chat", {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +69,7 @@ export async function requestChat(messages: Message[]) {
   const req: ChatRequest = makeRequestParam(messages, { filterBot: true });
 
   // const res = await requestOpenaiClient("v1/chat/completions")(req);
-  const res = await requestOpenaiClient(URL+"/chat")(req);
+  const res = await requestOpenaiClient(URL + "/chat")(req);
 
   try {
     const response = (await res.json()) as ChatReponse;
@@ -81,7 +81,7 @@ export async function requestChat(messages: Message[]) {
 
 export async function requestUsage() {
   const res = await requestOpenaiClient(
-    "dashboard/billing/credit_grants?_vercel_no_cache=1"
+    "dashboard/billing/credit_grants?_vercel_no_cache=1",
   )(null, "GET");
 
   try {
@@ -104,7 +104,7 @@ export async function requestChatStream(
     onMessage: (message: string, done: boolean) => void;
     onError: (error: Error) => void;
     onController?: (controller: AbortController) => void;
-  }
+  },
 ) {
   const req = makeRequestParam(messages, {
     stream: true,
@@ -123,8 +123,8 @@ export async function requestChatStream(
 
   try {
     // const res = await fetch("/api/chat-stream", {
-      
-    const res = await fetch(URL+"/chat", {
+
+    const res = await fetch(URL + "/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -155,7 +155,10 @@ export async function requestChatStream(
         const content = await reader?.read();
         clearTimeout(resTimeoutId);
         let text = decoder.decode(content?.value);
-        text = text.replace("data:","").replace("None","").replace("\n\n","");
+        text = text
+          .replace("data:", "")
+          .replace("None", "")
+          .replace("\n\n", "");
         responseText += text;
 
         const done = !content || content.done;
@@ -202,7 +205,7 @@ export const ControllerPool = {
   addController(
     sessionIndex: number,
     messageIndex: number,
-    controller: AbortController
+    controller: AbortController,
   ) {
     const key = this.key(sessionIndex, messageIndex);
     this.controllers[key] = controller;
