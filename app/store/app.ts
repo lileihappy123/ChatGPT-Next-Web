@@ -268,7 +268,8 @@ export const useChatStore = create<ChatStore>()(
             if (done) {
               botMessage.streaming = false;
               botMessage.content = content;
-              get().onNewMessage(botMessage);
+              // 因为会报错，先注释掉
+              // get().onNewMessage(botMessage);
               ControllerPool.remove(
                 sessionIndex,
                 botMessage.id ?? messageIndex,
