@@ -17,5 +17,6 @@ declare global {
 export async function POST(req: NextRequest) {
   return NextResponse.json({
     needCode: serverConfig.needCode,
+    baseUrl: serverConfig.baseUrl,
   });
 }

@@ -8,17 +8,19 @@ import {
   useChatStore,
 } from "./store";
 import { showToast } from "./components/ui-lib";
+import { getServerSideConfig } from "./config/server";
 
 // if (!Array.prototype.at) {
 //   require("array.prototype.at/auto");
 // }
 
 const TIME_OUT_MS = 30000;
-const OPENAI_URL = "127.0.0.1:5000";
-const DEFAULT_PROTOCOL = "http";
-const PROTOCOL = process.env.PROTOCOL ?? DEFAULT_PROTOCOL;
-const BASE_URL = process.env.BASE_URL ?? OPENAI_URL;
-const URL = `${PROTOCOL}://${BASE_URL}/`;
+let URL = "";
+
+function getBaseUrl() {
+  return useAccessStore.getState().baseUrl;
+}
+console.log("[URL] ", URL);
 
 const makeRequestParam = (
   messages: Message[],
@@ -74,7 +76,7 @@ export function requestOpenaiClient(path: string) {
   return (body: any, method = "POST") =>
     // fetch("/api/openai", {
     fetch(URL + "/chat", {
-    // fetch("/api/openai?_vercel_no_cache=1", {
+      // fetch("/api/openai?_vercel_no_cache=1", {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -95,7 +97,7 @@ export async function requestChat(
     filterBot: true,
     model: options?.model,
   });
-
+  URL = getBaseUrl();
   // const res = await requestOpenaiClient("v1/chat/completions")(req);
   const res = await requestOpenaiClient(URL + "/chat")(req);
 
@@ -121,7 +123,7 @@ export async function requestUsage() {
 
   const [used, subs] = await Promise.all([
     requestOpenaiClient(
-      `dashboard/billing/usage?start_date=${startDate}&end_date=${endDate}`
+      `dashboard/billing/usage?start_date=${startDate}&end_date=${endDate}`,
     )(null, "GET"),
     requestOpenaiClient("dashboard/billing/subscription")(null, "GET"),
   ]);
@@ -166,7 +168,7 @@ export async function requestChatStream(
     onMessage: (message: string, done: boolean) => void;
     onError: (error: Error, statusCode?: number) => void;
     onController?: (controller: AbortController) => void;
-  }
+  },
 ) {
   const req = makeRequestParam(messages, {
     stream: true,
@@ -175,6 +177,7 @@ export async function requestChatStream(
   });
 
   console.log("[Request] ", req);
+  URL = getBaseUrl();
 
   const controller = new AbortController();
   const reqTimeoutId = setTimeout(() => controller.abort(), TIME_OUT_MS);
@@ -273,7 +276,7 @@ export const ControllerPool = {
   addController(
     sessionIndex: number,
     messageId: number,
-    controller: AbortController
+    controller: AbortController,
   ) {
     const key = this.key(sessionIndex, messageId);
     this.controllers[key] = controller;

@@ -7,6 +7,7 @@ declare global {
       CODE?: string;
       PROXY_URL?: string;
       VERCEL?: string;
+      BASE_URL?: string;
     }
   }
 }
@@ -38,5 +39,6 @@ export const getServerSideConfig = () => {
     needCode: ACCESS_CODES.size > 0,
     proxyUrl: process.env.PROXY_URL,
     isVercel: !!process.env.VERCEL,
+    baseUrl: process.env.BASE_URL,
   };
 };

@@ -6,6 +6,7 @@ export interface AccessControlStore {
   token: string;
 
   needCode: boolean;
+  baseUrl: string;
 
   updateToken: (_: string) => void;
   updateCode: (_: string) => void;
@@ -24,6 +25,7 @@ export const useAccessStore = create<AccessControlStore>()(
       token: "",
       accessCode: "",
       needCode: true,
+      baseUrl: "",
       enabledAccessControl() {
         get().fetch();
 
